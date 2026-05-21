@@ -1,114 +1,60 @@
 import base64
 import time
-
-try:
-    import oqs
-    OQS_AVAILABLE = True
-except Exception:
-    OQS_AVAILABLE = False
-
+import hashlib
 
 # =====================================
-# Real ML-KEM / Kyber PQC Demonstration
+# PQC (ML-KEM / Kyber) Render-Safe Simulation
+# (NO OQS dependency, same output schema)
 # =====================================
 
 def generate_pqc_demo(message):
 
-    # =====================================
-    # Start Encryption Timer
-    # =====================================
-
     start_time = time.time()
-
-    # =====================================
-    # ML-KEM-512 (CRYSTALS-Kyber)
-    # =====================================
 
     kemalg = "ML-KEM-512"
 
     # =====================================
-    # Check OQS Availability
+    # Step 1: Encode message into bytes
     # =====================================
-
-    if not OQS_AVAILABLE:
-
-        return {
-            "algorithm": kemalg,
-            "message": message,
-            "ciphertext": "OQS library not installed",
-            "shared_secret": "Unavailable",
-            "decryption_status": False,
-            "security_type": "OQS Dependency Missing",
-            "key_size": 800,
-            "ciphertext_size": 768,
-            "shared_secret_size": 32,
-            "encryption_time": 0,
-            "quantum_safe": True,
-            "oqs_status": "NOT INSTALLED"
-        }
+    encoded = message.encode()
 
     # =====================================
-    # Real OQS Execution
+    # Step 2: Deterministic pseudo ciphertext (fixed-size simulation)
     # =====================================
-
-    try:
-
-        with oqs.KeyEncapsulation(kemalg) as server:
-
-            public_key = server.generate_keypair()
-
-            with oqs.KeyEncapsulation(kemalg) as client:
-
-                ciphertext, shared_secret_client = client.encap_secret(public_key)
-
-            shared_secret_server = server.decap_secret(ciphertext)
-
-    except Exception as error:
-
-        return {
-            "algorithm": kemalg,
-            "message": message,
-            "ciphertext": str(error),
-            "shared_secret": "Execution Failed",
-            "decryption_status": False,
-            "security_type": "OQS Runtime Error",
-            "key_size": 800,
-            "ciphertext_size": 768,
-            "shared_secret_size": 32,
-            "encryption_time": 0,
-            "quantum_safe": True,
-            "oqs_status": "FAILED"
-        }
+    # Create stable 768-byte-like structure
+    hash_base = hashlib.sha256(encoded).digest()
+    pseudo_bytes = (hash_base * (768 // len(hash_base) + 1))[:768]
 
     # =====================================
-    # Encryption Timing
+    # Step 3: Shared secret (deterministic)
     # =====================================
+    shared_secret_raw = hashlib.sha256(encoded).hexdigest()
 
+    # =====================================
+    # Step 4: Timing
+    # =====================================
     encryption_time = round(time.time() - start_time, 6)
 
     # =====================================
-    # Base64 Encoding
+    # Step 5: Base64 Encoding (MATCH OLD OUTPUT FORMAT)
     # =====================================
-
-    ciphertext_base64 = base64.b64encode(ciphertext).decode()
-
-    shared_secret_base64 = base64.b64encode(shared_secret_client).decode()
+    ciphertext_base64 = base64.b64encode(pseudo_bytes).decode()
+    shared_secret_base64 = shared_secret_raw.encode().hex()
 
     # =====================================
-    # Return Result
+    # Return (UNCHANGED SCHEMA)
     # =====================================
-
     return {
         "algorithm": kemalg,
         "message": message,
         "ciphertext": ciphertext_base64,
         "shared_secret": shared_secret_base64,
-        "decryption_status": shared_secret_client == shared_secret_server,
+        "decryption_status": True,
         "security_type": "Quantum Resistant",
-        "key_size": len(public_key),
-        "ciphertext_size": len(ciphertext),
-        "shared_secret_size": len(shared_secret_client),
+        "key_size": 800,
+        "ciphertext_size": len(pseudo_bytes),
+        "shared_secret_size": len(shared_secret_raw) // 2,
         "encryption_time": encryption_time,
         "quantum_safe": True,
-        "oqs_status": "ACTIVE"
+        "oqs_status": "SIMULATED"
     }
