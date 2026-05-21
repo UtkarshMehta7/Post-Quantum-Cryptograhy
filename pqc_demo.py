@@ -42,6 +42,7 @@ def generate_pqc_demo(message):
         "algorithm": kemalg,
         "message": message,
         "ciphertext": ciphertext,
+        "encrypted_message": ", ".join(map(str, ciphertext)),
         "shared_secret": shared_secret,
         "decryption_status": True,
         "security_type": "Lattice-Based Post Quantum Cryptography (Simulation)",
